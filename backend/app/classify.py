@@ -52,14 +52,21 @@ def classify_messages(df: pd.DataFrame, settings: Settings) -> pd.Series:
             dtype=object,
         )
 
-    client = LLMClient(settings)
-    batch = [
-        MessageToClassify(message_id=m, subject=s, body=b)
-        for m, s, b in zip(df["message_id"], df["subject"], df["body"])
-    ]
-    results = client.classify(batch)
-    return pd.Series(
-        [results[m].category if m in results else "other" for m in df["message_id"]],
-        index=df.index,
-        dtype=object,
-    )
+    try:
+        client = LLMClient(settings)
+        batch = [
+            MessageToClassify(message_id=m, subject=s, body=b)
+            for m, s, b in zip(df["message_id"], df["subject"], df["body"])
+        ]
+        results = client.classify(batch)
+    except Exception:
+        results = {}
+
+    categories = []
+    for m, s, b in zip(df["message_id"], df["subject"], df["body"]):
+        if m in results:
+            categories.append(results[m].category)
+        else:
+            categories.append(classify_keywords(s, b))
+
+    return pd.Series(categories, index=df.index, dtype=object)

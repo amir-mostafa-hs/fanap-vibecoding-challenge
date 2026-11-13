@@ -4,11 +4,11 @@
 
 **Blocked by:** 01 (SLA Engine & Iranian Calendar with Live Countdown), 02 (Persian Digit Order Reference Extraction & Dedup), 03 (Safe On-Demand AI Drafts & QA Hooks), 04 (Persian RTL Dashboard Redesign & Attention List Ordering)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] CLI runs successfully on `data/eval_messages.csv` with `--now 2026-04-15T07:00:00Z`.
-- [ ] `predictions.csv` created with header `message_id,category,is_urgent` matching all evaluated rows.
-- [ ] `WRITEUP.md` created covering:
+- [x] CLI runs successfully on `data/eval_messages.csv` with `--now 2026-04-15T07:00:00Z`.
+- [x] `predictions.csv` created with header `message_id,category,is_urgent` matching all evaluated rows.
+- [x] `WRITEUP.md` created covering:
   - Real problem understanding.
   - Assumptions made.
   - Identification and diagnostics of legacy code bugs.
@@ -16,4 +16,4 @@
   - Reflections on where AI tools misled or assisted.
   - LLM classification quality validation.
   - Safety verification for AI reply drafts shown to Sara.
-- [ ] Single-command startup (`docker compose up`) verified.
+- [x] Single-command startup (`docker compose up`) verified.

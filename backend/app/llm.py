@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
+from typing import Any
 
 import httpx
 
@@ -13,7 +15,7 @@ SYSTEM_PROMPT = (
     "Messages may be in Persian, English or Finglish. "
     f"Allowed categories: {', '.join(CATEGORIES)}. "
     "Allowed severities: low, medium, high. "
-    'Reply with JSON only, for example: {"category": "delivery", "severity": "medium"}'
+    'Reply with a JSON array only, for example: [{"message_id": "...", "category": "delivery", "severity": "medium"}]'
 )
 
 
@@ -41,30 +43,9 @@ class LLMClient:
             self._headers["Authorization"] = f"Bearer {settings.llm_api_key}"
         self._timeout = settings.llm_timeout_seconds
 
-    def _complete(self, client: httpx.Client, message: MessageToClassify) -> str:
-        payload = {
-            "model": self._model,
-            "temperature": 0,
-            "messages": [
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {
-                    "role": "user",
-                    "content": (
-                        f"message_id: {message.message_id}\n"
-                        f"subject: {message.subject}\n"
-                        f"body: {message.body}"
-                    ),
-                },
-            ],
-        }
-        response = client.post(self._url, json=payload, headers=self._headers)
-        response.raise_for_status()
-        return response.json()["choices"][0]["message"]["content"]
-
     def complete_text(self, prompt: str) -> str:
-        payload = {
+        payload: dict[str, Any] = {
             "model": self._model,
-            "temperature": 0.3,
             "messages": [{"role": "user", "content": prompt}],
         }
         with httpx.Client(timeout=self._timeout) as client:
@@ -72,26 +53,50 @@ class LLMClient:
             response.raise_for_status()
             return response.json()["choices"][0]["message"]["content"]
 
-    def classify(self, messages: list[MessageToClassify]) -> dict[str, Classification]:
-        """Classify each message with one request per message.
+    def classify(self, messages: list[MessageToClassify], chunk_size: int = 20) -> dict[str, Classification]:
+        """Classify messages in batches to minimize network roundtrips and conserve quota.
 
-        Returns a mapping message_id -> Classification for the messages that
-        produced a usable answer.
+        Returns a mapping message_id -> Classification.
         """
         results: dict[str, Classification] = {}
         with httpx.Client(timeout=self._timeout) as client:
-            for message in messages:
-                text = self._complete(client, message)
+            for i in range(0, len(messages), chunk_size):
+                chunk = messages[i : i + chunk_size]
                 try:
-                    data = json.loads(text)
-                except json.JSONDecodeError:
+                    payload = {
+                        "model": self._model,
+                        "messages": [
+                            {"role": "system", "content": SYSTEM_PROMPT},
+                            {
+                                "role": "user",
+                                "content": json.dumps(
+                                    [
+                                        {"message_id": m.message_id, "subject": m.subject, "body": m.body[:250]}
+                                        for m in chunk
+                                    ],
+                                    ensure_ascii=False,
+                                ),
+                            },
+                        ],
+                    }
+                    response = client.post(self._url, json=payload, headers=self._headers)
+                    response.raise_for_status()
+                    text = response.json()["choices"][0]["message"]["content"].strip()
+                    if text.startswith("```"):
+                        text = re.sub(r"^```(?:json)?\s*", "", text)
+                        text = re.sub(r"\s*```$", "", text)
+                    items = json.loads(text)
+                    if isinstance(items, list):
+                        for item in items:
+                            mid = str(item.get("message_id", "")).strip()
+                            cat = str(item.get("category", "")).strip().lower()
+                            if cat not in CATEGORIES:
+                                cat = "other"
+                            sev = item.get("severity")
+                            results[mid] = Classification(
+                                category=cat,
+                                severity=str(sev).lower() if sev else None,
+                            )
+                except Exception:
                     continue
-                category = str(data.get("category", "")).strip().lower()
-                if category not in CATEGORIES:
-                    category = "other"
-                severity = data.get("severity")
-                results[message.message_id] = Classification(
-                    category=category,
-                    severity=str(severity).lower() if severity else None,
-                )
         return results
