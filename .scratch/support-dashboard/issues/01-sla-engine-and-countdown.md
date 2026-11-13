@@ -4,13 +4,13 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Support team working schedule defined as Saturday to Wednesday, 09:00–17:00 Tehran time (+03:30).
-- [ ] Thursday and Friday treated as non-working weekend days.
-- [ ] All 26 official 1405 holidays defined in Gregorian lookup table and excluded from business hours.
-- [ ] Default `URGENT_SLA_BUSINESS_HOURS` configured as `2.0` in code and `docker-compose.yml`.
-- [ ] A message is marked urgent if it is high-severity, unanswered, and has waited at least 2 business hours.
-- [ ] Identical business hours engine implemented in frontend TypeScript to compute business minutes left.
-- [ ] Live browser timer updates countdown and urgency counts at least once a minute.
-- [ ] Automated tests in both backend and frontend verifying regular hours, weekends, holidays, and SLA threshold boundaries.
+- [x] Support team working schedule defined as Saturday to Wednesday, 09:00–17:00 Tehran time (+03:30).
+- [x] Thursday and Friday treated as non-working weekend days.
+- [x] All 26 official 1405 holidays defined in Gregorian lookup table and excluded from business hours.
+- [x] Default `URGENT_SLA_BUSINESS_HOURS` configured as `2.0` in code and `docker-compose.yml`.
+- [x] A message is marked urgent if it is high-severity, unanswered, and has waited at least 2 business hours.
+- [x] Identical business hours engine implemented in frontend TypeScript to compute business minutes left.
+- [x] Live browser timer updates countdown and urgency counts at least once a minute.
+- [x] Automated tests in both backend and frontend verifying regular hours, weekends, holidays, and SLA threshold boundaries.

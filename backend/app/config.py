@@ -30,7 +30,7 @@ def _optional(name: str) -> str | None:
 
 def get_settings() -> Settings:
     return Settings(
-        urgent_sla_business_hours=float(os.environ.get("URGENT_SLA_BUSINESS_HOURS", "2")),
+        urgent_sla_business_hours=float(os.environ.get("URGENT_SLA_BUSINESS_HOURS", "2.0")),
         llm_base_url=_optional("LLM_BASE_URL"),
         llm_api_key=_optional("LLM_API_KEY"),
         llm_model=os.environ.get("LLM_MODEL", "").strip() or "gpt-4o-mini",
