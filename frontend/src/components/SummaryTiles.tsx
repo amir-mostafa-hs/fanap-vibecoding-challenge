@@ -1,0 +1,19 @@
+interface Props {
+  total: number;
+  urgent: number;
+}
+
+export default function SummaryTiles({ total, urgent }: Props) {
+  return (
+    <section className="tiles">
+      <div className="card tile">
+        <div className="tile-label">Unique messages</div>
+        <div className="tile-value" data-testid="total">{total.toLocaleString()}</div>
+      </div>
+      <div className="card tile urgent" data-testid="urgent-count">
+        <div className="tile-label">Urgent</div>
+        <div className="tile-value" data-testid="urgent">{urgent.toLocaleString()}</div>
+      </div>
+    </section>
+  );
+}
