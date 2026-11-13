@@ -26,3 +26,22 @@ def test_analyze_upload(sample_csv: Path) -> None:
     body = response.json()
     assert body["total_unique_messages"] == 3
     assert body["messages"][0]["received_at"] == "2026-10-26T08:00:00Z"
+
+
+def test_draft_endpoint_unconfigured_llm() -> None:
+    response = client.post(
+        "/api/draft",
+        json={
+            "message_id": "M1a2b3c4d",
+            "customer_id": "C123",
+            "subject": "کالای شکسته",
+            "body": "بسته رسید ولی لیوان داخل آن شکسته بود",
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["message_id"] == "M1a2b3c4d"
+    assert data["language"] == "fa"
+    assert data["blocked"] is True
+    assert data["draft"] == ""
+    assert isinstance(data["warnings"], list)
