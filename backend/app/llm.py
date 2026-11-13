@@ -1,6 +1,7 @@
 """Client for an OpenAI-compatible chat-completions endpoint."""
 from __future__ import annotations
 
+import concurrent.futures
 import json
 import re
 from dataclasses import dataclass
@@ -53,50 +54,76 @@ class LLMClient:
             response.raise_for_status()
             return response.json()["choices"][0]["message"]["content"]
 
-    def classify(self, messages: list[MessageToClassify], chunk_size: int = 20) -> dict[str, Classification]:
-        """Classify messages in batches to minimize network roundtrips and conserve quota.
+    def _classify_chunk(
+        self, client: httpx.Client, chunk: list[MessageToClassify]
+    ) -> list[tuple[str, Classification]]:
+        try:
+            payload = {
+                "model": self._model,
+                "messages": [
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {
+                        "role": "user",
+                        "content": json.dumps(
+                            [
+                                {"message_id": m.message_id, "subject": m.subject, "body": m.body[:250]}
+                                for m in chunk
+                            ],
+                            ensure_ascii=False,
+                        ),
+                    },
+                ],
+            }
+            response = client.post(self._url, json=payload, headers=self._headers)
+            response.raise_for_status()
+            text = response.json()["choices"][0]["message"]["content"].strip()
+            if text.startswith("```"):
+                text = re.sub(r"^```(?:json)?\s*", "", text)
+                text = re.sub(r"\s*```$", "", text)
+            items = json.loads(text)
+            out: list[tuple[str, Classification]] = []
+            if isinstance(items, list):
+                for item in items:
+                    mid = str(item.get("message_id", "")).strip()
+                    cat = str(item.get("category", "")).strip().lower()
+                    if cat not in CATEGORIES:
+                        cat = "other"
+                    sev = item.get("severity")
+                    out.append(
+                        (
+                            mid,
+                            Classification(
+                                category=cat,
+                                severity=str(sev).lower() if sev else None,
+                            ),
+                        )
+                    )
+            return out
+        except Exception:
+            return []
+
+    def classify(
+        self,
+        messages: list[MessageToClassify],
+        chunk_size: int = 20,
+        max_workers: int = 6,
+    ) -> dict[str, Classification]:
+        """Classify messages in concurrent batches to minimize latency and avoid gateway timeouts.
 
         Returns a mapping message_id -> Classification.
         """
+        if not messages:
+            return {}
+
+        chunks = [messages[i : i + chunk_size] for i in range(0, len(messages), chunk_size)]
         results: dict[str, Classification] = {}
+        workers = min(max_workers, len(chunks))
+
         with httpx.Client(timeout=self._timeout) as client:
-            for i in range(0, len(messages), chunk_size):
-                chunk = messages[i : i + chunk_size]
-                try:
-                    payload = {
-                        "model": self._model,
-                        "messages": [
-                            {"role": "system", "content": SYSTEM_PROMPT},
-                            {
-                                "role": "user",
-                                "content": json.dumps(
-                                    [
-                                        {"message_id": m.message_id, "subject": m.subject, "body": m.body[:250]}
-                                        for m in chunk
-                                    ],
-                                    ensure_ascii=False,
-                                ),
-                            },
-                        ],
-                    }
-                    response = client.post(self._url, json=payload, headers=self._headers)
-                    response.raise_for_status()
-                    text = response.json()["choices"][0]["message"]["content"].strip()
-                    if text.startswith("```"):
-                        text = re.sub(r"^```(?:json)?\s*", "", text)
-                        text = re.sub(r"\s*```$", "", text)
-                    items = json.loads(text)
-                    if isinstance(items, list):
-                        for item in items:
-                            mid = str(item.get("message_id", "")).strip()
-                            cat = str(item.get("category", "")).strip().lower()
-                            if cat not in CATEGORIES:
-                                cat = "other"
-                            sev = item.get("severity")
-                            results[mid] = Classification(
-                                category=cat,
-                                severity=str(sev).lower() if sev else None,
-                            )
-                except Exception:
-                    continue
+            with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
+                futures = [executor.submit(self._classify_chunk, client, chunk) for chunk in chunks]
+                for future in concurrent.futures.as_completed(futures):
+                    for mid, classification in future.result():
+                        results[mid] = classification
+
         return results
