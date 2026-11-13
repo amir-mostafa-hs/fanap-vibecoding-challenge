@@ -4,10 +4,10 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Digits in Persian (`۰-۹`) and Arabic (`٠-٩`) normalized to ASCII digits (`0-9`).
-- [ ] Pattern extracts order references prefixed with `BZ-` (case-insensitive) whether in the order field or inside message body.
-- [ ] Normalized output consistently formats as uppercase `BZ-<ascii-digits>`.
-- [ ] Deduplication correctly marks subsequent identical messages from the same customer as duplicates.
-- [ ] Automated tests cover Persian digits, lowercase `bz-`, body extraction, and non-order messages.
+- [x] Digits in Persian (`۰-۹`) and Arabic (`٠-٩`) normalized to ASCII digits (`0-9`).
+- [x] Pattern extracts order references prefixed with `BZ-` (case-insensitive) whether in the order field or inside message body.
+- [x] Normalized output consistently formats as uppercase `BZ-<ascii-digits>`.
+- [x] Deduplication correctly marks subsequent identical messages from the same customer as duplicates.
+- [x] Automated tests cover Persian digits, lowercase `bz-`, body extraction, and non-order messages.
