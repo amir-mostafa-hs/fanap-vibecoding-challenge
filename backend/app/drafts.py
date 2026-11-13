@@ -39,12 +39,31 @@ _FORBIDDEN_DATES_EN = re.compile(
 )
 
 
+_FINGLISH_WORDS = frozenset({
+    "salam", "dorood", "khaste", "nabashid", "baste", "basteye", "sefaresh", "sefareshe",
+    "man", "lotfan", "peygiri", "tahvil", "ersal", "nareside", "resid", "shod",
+    "shode", "hanooz", "nemikham", "mikham", "pool", "kart", "hesab", "pardakht", "kharab",
+    "bargasht", "marjooe", "chera", "kojast", "nemidunam", "mamnoon", "merci",
+})
+
+
 def detect_language(text: str) -> str:
-    """Detect whether text is primarily Persian ('fa') or English ('en')."""
+    """Detect whether text is primarily Persian ('fa') or English ('en').
+
+    Persian script and Finglish messages map to 'fa'.
+    """
     persian_chars = len(re.findall(r"[\u0600-\u06FF]", text or ""))
     latin_chars = len(re.findall(r"[a-zA-Z]", text or ""))
     if persian_chars > 0 and persian_chars >= latin_chars:
         return "fa"
+    if persian_chars > 0:
+        return "fa"
+
+    # Check for Finglish markers in Latin text
+    words = set(re.findall(r"\b[a-z]{2,}\b", (text or "").lower()))
+    if words & _FINGLISH_WORDS:
+        return "fa"
+
     if latin_chars > 0:
         return "en"
     return "fa"

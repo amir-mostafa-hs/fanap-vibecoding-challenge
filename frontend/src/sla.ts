@@ -86,7 +86,7 @@ export function isBusinessDateKey(dateKey: string, dayOfWeek: number): boolean {
 /**
  * Calculates business hours between two timestamps in Tehran time.
  */
-export function businessHoursBetween(start: Date, end: Date): float {
+export function businessHoursBetween(start: Date, end: Date): number {
   if (end.getTime() <= start.getTime()) {
     return 0;
   }
@@ -130,8 +130,6 @@ export function businessHoursBetween(start: Date, end: Date): float {
 
   return totalMs / 3600000;
 }
-
-type float = number;
 
 /**
  * Computes integer business minutes remaining until the 2h SLA breaches.

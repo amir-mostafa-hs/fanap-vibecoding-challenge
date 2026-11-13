@@ -4,7 +4,7 @@ import { formatCategory, formatDate } from '../format';
 const MAX_ROWS = 200;
 
 function highlightOrders(text: string): string {
-  return text.replace(/BZ-[0-9]+/gi, (id) => `<mark class="order-ref">${id}</mark>`);
+  return text.replace(/BZ-[0-9۰-۹٠-٩]+/gi, (id) => `<mark class="order-ref">${id}</mark>`);
 }
 
 export default function MessagesTable({ messages }: { messages: Message[] }) {

@@ -63,10 +63,10 @@ def classify_messages(df: pd.DataFrame, settings: Settings) -> pd.Series:
         results = {}
 
     categories = []
-    for m, s, b in zip(df["message_id"], df["subject"], df["body"]):
-        if m in results:
-            categories.append(results[m].category)
+    for msg_id, subject, body in zip(df["message_id"], df["subject"], df["body"]):
+        if msg_id in results:
+            categories.append(results[msg_id].category)
         else:
-            categories.append(classify_keywords(s, b))
+            categories.append(classify_keywords(subject, body))
 
     return pd.Series(categories, index=df.index, dtype=object)

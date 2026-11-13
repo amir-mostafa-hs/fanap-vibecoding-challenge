@@ -7,6 +7,7 @@ from app.config import Settings
 def test_detect_language() -> None:
     assert detect_language("سلام، بسته من هنوز نرسیده است") == "fa"
     assert detect_language("پیگیری سفارش BZ-12345") == "fa"
+    assert detect_language("salam basteye man hanooz nareside lotfan peygiri konid") == "fa"
     assert detect_language("Hello, where is my package?") == "en"
     assert detect_language("My order BZ-999 was delayed") == "en"
 

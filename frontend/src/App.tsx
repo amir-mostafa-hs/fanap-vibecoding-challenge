@@ -12,15 +12,18 @@ export default function App() {
   const [result, setResult] = useState<AnalyzeResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fixedNow, setFixedNow] = useState<Date | null>(null);
   const [currentTime, setCurrentTime] = useState<Date>(() => new Date());
 
   // Update clock every 30 seconds for live countdowns without network/LLM requests
   useEffect(() => {
     const timer = setInterval(() => {
-      setCurrentTime(new Date());
+      if (!fixedNow) {
+        setCurrentTime(new Date());
+      }
     }, 30000);
     return () => clearInterval(timer);
-  }, []);
+  }, [fixedNow]);
 
   async function handleSubmit(file: File, now?: string) {
     setLoading(true);
@@ -29,8 +32,11 @@ export default function App() {
       const res = await analyze(file, now);
       setResult(res);
       if (now) {
-        setCurrentTime(new Date(now));
+        const parsed = new Date(now);
+        setFixedNow(parsed);
+        setCurrentTime(parsed);
       } else {
+        setFixedNow(null);
         setCurrentTime(new Date());
       }
     } catch (e) {
