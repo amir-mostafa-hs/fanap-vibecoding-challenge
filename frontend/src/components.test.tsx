@@ -3,6 +3,7 @@ import { vi } from 'vitest';
 import SummaryTiles from './components/SummaryTiles';
 import CategoryBreakdown from './components/CategoryBreakdown';
 import AttentionList from './components/AttentionList';
+import UploadForm from './components/UploadForm';
 import * as api from './api';
 import type { Message } from './types';
 
@@ -11,6 +12,18 @@ describe('SummaryTiles', () => {
     render(<SummaryTiles total={1200} urgent={7} />);
     expect(screen.getByTestId('urgent')).toHaveTextContent('7');
     expect(screen.getByTestId('urgent-count')).toHaveTextContent('7');
+  });
+});
+
+describe('UploadForm', () => {
+  it('has upload-input and analyze-button testids', () => {
+    const onSubmit = vi.fn();
+    render(<UploadForm onSubmit={onSubmit} loading={false} />);
+    const input = screen.getByTestId('upload-input');
+    const button = screen.getByTestId('analyze-button');
+    expect(input).toBeInTheDocument();
+    expect(button).toBeInTheDocument();
+    expect(button).toBeDisabled(); // disabled until file chosen
   });
 });
 
@@ -24,13 +37,13 @@ describe('CategoryBreakdown', () => {
 });
 
 describe('AttentionList & Draft reply workflow', () => {
-  const sampleMessage: Message = {
-    message_id: 'M100',
+  const sampleMessage1: Message = {
+    message_id: 'M101',
     category: 'delivery',
     is_urgent: true,
     order_ref: 'BZ-48219',
     duplicate_of: null,
-    customer_id: 'C100',
+    customer_id: 'C101',
     channel: 'app',
     received_at: '2026-10-24T10:00:00+03:30',
     answered_at: null,
@@ -40,9 +53,46 @@ describe('AttentionList & Draft reply workflow', () => {
     severity_hint: 'high',
   };
 
-  it('renders attention row with QA testids and handles successful draft', async () => {
+  const sampleMessage2: Message = {
+    message_id: 'M102',
+    category: 'payment',
+    is_urgent: false,
+    order_ref: null,
+    duplicate_of: null,
+    customer_id: 'C102',
+    channel: 'web',
+    received_at: '2026-10-24T11:45:00+03:30',
+    answered_at: null,
+    subject: 'برداشت دوباره از حساب',
+    body: 'دو بار از کارتم کم شد',
+    severity: 'high',
+    severity_hint: 'high',
+  };
+
+  it('renders attention rows in display order with QA testids', () => {
+    // Evaluation time: 2026-10-24 12:30:00 (+03:30)
+    // M101 received 10:00 -> elapsed 2.5h -> 30 mins overdue (-30)
+    // M102 received 11:45 -> elapsed 0.75h -> 75 mins left (+75)
+    render(
+      <AttentionList
+        ids={['M101', 'M102']}
+        messages={[sampleMessage1, sampleMessage2]}
+        now={new Date('2026-10-24T12:30:00+03:30')}
+      />
+    );
+
+    const rows = screen.getAllByTestId('attention-row');
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toHaveAttribute('data-message-id', 'M101');
+    expect(rows[0]).toHaveAttribute('data-business-minutes-left', '-30');
+
+    expect(rows[1]).toHaveAttribute('data-message-id', 'M102');
+    expect(rows[1]).toHaveAttribute('data-business-minutes-left', '75');
+  });
+
+  it('handles successful draft reply with textarea and approve button', async () => {
     vi.spyOn(api, 'requestDraft').mockResolvedValueOnce({
-      message_id: 'M100',
+      message_id: 'M101',
       draft: 'سلام، پیام شما دریافت شد و در حال پیگیری هستیم.',
       language: 'fa',
       blocked: false,
@@ -51,20 +101,13 @@ describe('AttentionList & Draft reply workflow', () => {
 
     render(
       <AttentionList
-        ids={['M100']}
-        messages={[sampleMessage]}
+        ids={['M101']}
+        messages={[sampleMessage1]}
         now={new Date('2026-10-24T12:30:00+03:30')}
       />
     );
 
-    const row = screen.getByTestId('attention-row');
-    expect(row).toBeInTheDocument();
-    expect(row).toHaveAttribute('data-message-id', 'M100');
-    expect(row).toHaveAttribute('data-business-minutes-left');
-
     const draftBtn = screen.getByTestId('draft-button');
-    expect(draftBtn).toBeInTheDocument();
-
     fireEvent.click(draftBtn);
 
     const textarea = await screen.findByTestId('draft-text');
@@ -86,7 +129,7 @@ describe('AttentionList & Draft reply workflow', () => {
 
   it('renders draft-warning when draft generation is blocked', async () => {
     vi.spyOn(api, 'requestDraft').mockResolvedValueOnce({
-      message_id: 'M100',
+      message_id: 'M101',
       draft: '',
       language: 'fa',
       blocked: true,
@@ -95,8 +138,8 @@ describe('AttentionList & Draft reply workflow', () => {
 
     render(
       <AttentionList
-        ids={['M100']}
-        messages={[sampleMessage]}
+        ids={['M101']}
+        messages={[sampleMessage1]}
         now={new Date('2026-10-24T12:30:00+03:30')}
       />
     );

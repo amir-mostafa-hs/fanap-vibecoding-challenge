@@ -9,13 +9,13 @@ interface Props {
 export default function CategoryBreakdown({ counts, total }: Props) {
   return (
     <section className="card">
-      <h2>Categories</h2>
+      <h2>دسته‌بندی پیام‌ها</h2>
       <ul className="breakdown">
         {CATEGORIES.map((cat) => {
-          const pct = (counts[cat] / total * 100).toFixed(1);
+          const pct = total ? (counts[cat] / total * 100).toFixed(1) : '0.0';
           return (
             <li key={cat}>
-              <span className="cat-name">{formatCategory(cat)}</span>
+              <span className="cat-name">{formatCategory(cat, 'fa')}</span>
               <span className="bar">
                 <span className="bar-fill" style={{ width: `${pct}%` }} />
               </span>

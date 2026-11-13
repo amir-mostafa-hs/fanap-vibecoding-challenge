@@ -4,13 +4,13 @@
 
 **Blocked by:** 01 (SLA Engine & Iranian Calendar with Live Countdown), 02 (Persian Digit Order Reference Extraction & Dedup), 03 (Safe On-Demand AI Drafts & QA Hooks)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Page direction set to RTL (`dir="rtl"`, `lang="fa"`) with Persian headings, tiles, labels, and category translations.
-- [ ] English customer message content remains readable with isolated LTR/auto direction.
-- [ ] Needs Attention list displays all canonical, unanswered high-severity messages.
-- [ ] Attention list ordered by most overdue first, down to messages closest to breaching.
-- [ ] Attention rows provide `data-testid="attention-row"`, `data-message-id`, and `data-business-minutes-left`.
-- [ ] File upload and analyze trigger satisfy `data-testid="upload-input"` and `data-testid="analyze-button"`.
-- [ ] Urgent counter satisfies `data-testid="urgent-count"` and stays in sync with overdue items in attention list.
-- [ ] Automated Vitest component tests verify RTL styling, attention ordering, and QA testid interactions.
+- [x] Page direction set to RTL (`dir="rtl"`, `lang="fa"`) with Persian headings, tiles, labels, and category translations.
+- [x] English customer message content remains readable with isolated LTR/auto direction.
+- [x] Needs Attention list displays all canonical, unanswered high-severity messages.
+- [x] Attention list ordered by most overdue first, down to messages closest to breaching.
+- [x] Attention rows provide `data-testid="attention-row"`, `data-message-id`, and `data-business-minutes-left`.
+- [x] File upload and analyze trigger satisfy `data-testid="upload-input"` and `data-testid="analyze-button"`.
+- [x] Urgent counter satisfies `data-testid="urgent-count"` and stays in sync with overdue items in attention list.
+- [x] Automated Vitest component tests verify RTL styling, attention ordering, and QA testid interactions.

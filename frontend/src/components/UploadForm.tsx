@@ -19,15 +19,24 @@ export default function UploadForm({ onSubmit, loading }: Props) {
   return (
     <form className="card upload" onSubmit={submit}>
       <label>
-        CSV file
-        <input data-testid="upload-input" type="file" accept=".csv,text/csv" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+        فایل پشتیبانی (CSV)
+        <input
+          data-testid="upload-input"
+          type="file"
+          accept=".csv,text/csv"
+          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+        />
       </label>
       <label>
-        "Now" override (UTC, optional)
-        <input type="datetime-local" value={now} onChange={(e) => setNow(e.target.value)} />
+        زمان مبنای ارزیابی (اختیاری - UTC)
+        <input
+          type="datetime-local"
+          value={now}
+          onChange={(e) => setNow(e.target.value)}
+        />
       </label>
       <button type="submit" data-testid="analyze-button" disabled={!file || loading}>
-        {loading ? 'Analyzing...' : 'Analyze'}
+        {loading ? 'در حال تحلیل...' : 'تحلیل فایل'}
       </button>
     </form>
   );
