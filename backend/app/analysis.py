@@ -11,10 +11,8 @@ import pandas as pd
 
 from .classify import classify_messages
 from .config import Settings, get_settings
-from .dedup import mark_duplicates
 from .drafts import prefetch
-from .ingest import load_messages
-from .orders import extract_order_ref
+from .ingest import canonicalize, load_and_canonicalize, load_messages
 from .urgency import is_urgent
 
 
@@ -35,9 +33,10 @@ def _iso(value: Any) -> str | None:
 
 def enrich(df: pd.DataFrame, now: datetime, settings: Settings) -> pd.DataFrame:
     """Add order_ref, duplicate_of, category and is_urgent columns."""
-    df = df.copy()
-    df["order_ref"] = [extract_order_ref(o, b) for o, b in zip(df["order_ref"], df["body"])]
-    df["duplicate_of"] = mark_duplicates(df)
+    if "duplicate_of" not in df.columns or "order_ref" not in df.columns:
+        df = canonicalize(df)
+    else:
+        df = df.copy()
 
     canonical = df["duplicate_of"].isna()
     categories = classify_messages(df[canonical], settings)
@@ -102,7 +101,7 @@ def analyze(
 ) -> dict[str, Any]:
     settings = settings or get_settings()
     now = now or datetime.now(timezone.utc)
-    df = load_messages(source)
+    df = load_and_canonicalize(source)
     df = enrich(df, now, settings)
     report = build_report(df, include_details=include_details)
     if prefetch_drafts:
@@ -132,9 +131,7 @@ def analyze_stream(
         "progress": 25,
         "message": "استخراج شناسه سفارش و پالایش پیام‌های تکراری...",
     }
-    df = df.copy()
-    df["order_ref"] = [extract_order_ref(o, b) for o, b in zip(df["order_ref"], df["body"])]
-    df["duplicate_of"] = mark_duplicates(df)
+    df = canonicalize(df)
 
     canonical = df["duplicate_of"].isna()
     canonical_count = int(canonical.sum())

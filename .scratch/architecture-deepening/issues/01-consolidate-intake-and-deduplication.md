@@ -6,7 +6,7 @@
 
 **Status:** ready-for-agent
 
-- [ ] Message loading, CSV validation, Persian/Arabic digit normalization, order reference parsing, and deduplication logic are unified within a deep intake interface (`backend/app/ingest.py`).
-- [ ] Shallow helper modules `backend/app/orders.py` and `backend/app/dedup.py` are deprecated and absorbed.
-- [ ] Callers in `analysis.py` invoke a single intake step rather than coordinating multiple manual string transformations across DataFrame columns.
-- [ ] All existing intake, orders, and deduplication unit tests pass without regression against the consolidated module.
+- [x] Message loading, CSV validation, Persian/Arabic digit normalization, order reference parsing, and deduplication logic are unified within a deep intake interface (`backend/app/ingest.py`).
+- [x] Shallow helper modules `backend/app/orders.py` and `backend/app/dedup.py` are deprecated and absorbed.
+- [x] Callers in `analysis.py` invoke a single intake step rather than coordinating multiple manual string transformations across DataFrame columns.
+- [x] All existing intake, orders, and deduplication unit tests pass without regression against the consolidated module.
