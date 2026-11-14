@@ -31,12 +31,24 @@ def _iso(value: Any) -> str | None:
     return pd.Timestamp(value).tz_convert("UTC").strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def enrich(
-    df: pd.DataFrame,
-    now: datetime,
-    settings: Settings,
-    progress_callback: Any = None,
-) -> pd.DataFrame:
+def apply_sla(df: pd.DataFrame, now: datetime, sla_hours: float) -> pd.DataFrame:
+    """Evaluate SLA urgency and calculate deterministic deadline timestamps."""
+    canonical = df["duplicate_of"].isna()
+    df["is_urgent"] = [
+        bool(is_canonical)
+        and is_urgent(hint, received, answered, now, sla_hours)
+        for is_canonical, hint, received, answered in zip(
+            canonical, df["severity_hint"], df["received_at"], df["answered_at"]
+        )
+    ]
+    df["sla_deadline_at"] = [
+        calculate_sla_deadline(recv, sla_hours) if is_canon else None
+        for is_canon, recv in zip(canonical, df["received_at"])
+    ]
+    return df
+
+
+def enrich(df: pd.DataFrame, now: datetime, settings: Settings) -> pd.DataFrame:
     """Add order_ref, duplicate_of, category, is_urgent and sla_deadline_at columns."""
     if "duplicate_of" not in df.columns or "order_ref" not in df.columns:
         df = canonicalize(df)
@@ -44,25 +56,14 @@ def enrich(
         df = df.copy()
 
     canonical = df["duplicate_of"].isna()
-    categories = classify_messages(df[canonical], settings, progress_callback=progress_callback)
+    categories = classify_messages(df[canonical], settings)
     by_id = dict(zip(df.loc[canonical, "message_id"], categories))
     df["category"] = [
         by_id[dup if dup is not None else mid]
         for mid, dup in zip(df["message_id"], df["duplicate_of"])
     ]
+    return apply_sla(df, now, settings.urgent_sla_business_hours)
 
-    df["is_urgent"] = [
-        bool(is_canonical)
-        and is_urgent(hint, received, answered, now, settings.urgent_sla_business_hours)
-        for is_canonical, hint, received, answered in zip(
-            canonical, df["severity_hint"], df["received_at"], df["answered_at"]
-        )
-    ]
-    df["sla_deadline_at"] = [
-        calculate_sla_deadline(recv, settings.urgent_sla_business_hours) if is_canon else None
-        for is_canon, recv in zip(canonical, df["received_at"])
-    ]
-    return df
 
 
 def build_report(df: pd.DataFrame, include_details: bool = False) -> dict[str, Any]:
@@ -201,19 +202,9 @@ def analyze_stream(
         "message": "محاسبه قوانین ساعات کاری ایران و اولویت‌بندی تعهد SLA...",
     }
 
-    df["is_urgent"] = [
-        bool(is_canonical)
-        and is_urgent(hint, received, answered, now, settings.urgent_sla_business_hours)
-        for is_canonical, hint, received, answered in zip(
-            canonical, df["severity_hint"], df["received_at"], df["answered_at"]
-        )
-    ]
-    df["sla_deadline_at"] = [
-        calculate_sla_deadline(recv, settings.urgent_sla_business_hours) if is_canon else None
-        for is_canon, recv in zip(canonical, df["received_at"])
-    ]
-
+    df = apply_sla(df, now, settings.urgent_sla_business_hours)
     report = build_report(df, include_details=include_details)
+
 
     yield {
         "step": "complete",

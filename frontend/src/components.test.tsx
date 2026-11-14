@@ -95,7 +95,6 @@ describe('AttentionList & Draft reply workflow', () => {
     // M102 received 11:45 -> elapsed 0.75h -> 75 mins left (+75)
     render(
       <AttentionList
-        ids={['M101', 'M102']}
         messages={[sampleMessage1, sampleMessage2]}
         now={new Date('2026-10-24T12:30:00+03:30')}
       />
@@ -113,11 +112,11 @@ describe('AttentionList & Draft reply workflow', () => {
   it('filters attention rows using interactive tabs', () => {
     render(
       <AttentionList
-        ids={['M101', 'M102']}
         messages={[sampleMessage1, sampleMessage2]}
         now={new Date('2026-10-24T12:30:00+03:30')}
       />
     );
+
 
     // Initial state: "all" selected -> 2 rows
     expect(screen.getAllByTestId('attention-row')).toHaveLength(2);
@@ -142,8 +141,7 @@ describe('AttentionList & Draft reply workflow', () => {
     expect(screen.getAllByTestId('attention-row')).toHaveLength(2);
   });
 
-  it('deep module: auto-filters candidates and computes stats when ids prop is omitted', () => {
-    const onStatsChange = vi.fn();
+  it('deep module: auto-filters candidates and computes stats via useAttentionQueue', () => {
     const answeredMessage: Message = {
       ...sampleMessage1,
       message_id: 'M103',
@@ -158,7 +156,6 @@ describe('AttentionList & Draft reply workflow', () => {
       <AttentionList
         messages={[sampleMessage1, sampleMessage2, answeredMessage, duplicateMessage]}
         now={new Date('2026-10-24T12:30:00+03:30')}
-        onStatsChange={onStatsChange}
       />
     );
     // Answered and duplicate messages are filtered out internally:
@@ -166,11 +163,9 @@ describe('AttentionList & Draft reply workflow', () => {
     expect(rows).toHaveLength(2);
     expect(rows[0]).toHaveAttribute('data-message-id', 'M101');
     expect(rows[1]).toHaveAttribute('data-message-id', 'M102');
-    expect(onStatsChange).toHaveBeenCalledWith({
-      urgent: 1,
-      approaching: 1,
-      total: 2,
-    });
+    expect(screen.getByRole('tab', { name: /همه \(2\)/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /فوری و معوق \(1\)/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /در مهلت تعهد \(1\)/i })).toBeInTheDocument();
   });
 
   it('handles successful draft reply with textarea and approve button', async () => {
@@ -184,7 +179,6 @@ describe('AttentionList & Draft reply workflow', () => {
 
     render(
       <AttentionList
-        ids={['M101']}
         messages={[sampleMessage1]}
         now={new Date('2026-10-24T12:30:00+03:30')}
       />
@@ -221,11 +215,11 @@ describe('AttentionList & Draft reply workflow', () => {
 
     render(
       <AttentionList
-        ids={['M101']}
         messages={[sampleMessage1]}
         now={new Date('2026-10-24T12:30:00+03:30')}
       />
     );
+
 
     const draftBtn = screen.getByTestId('draft-button');
     fireEvent.click(draftBtn);

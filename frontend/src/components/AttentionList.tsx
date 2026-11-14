@@ -1,19 +1,12 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState } from 'react';
 import type { Draft, Message } from '../types';
 import { requestDraft } from '../api';
-import { computeBusinessMinutesLeft } from '../sla';
-
-export interface AttentionStats {
-  urgent: number;
-  approaching: number;
-  total: number;
-}
+import { useAttentionQueue, type AttentionQueue } from '../useAttentionQueue';
 
 interface Props {
-  messages: Message[];
+  queue?: AttentionQueue;
+  messages?: Message[];
   now?: Date;
-  ids?: string[];
-  onStatsChange?: (stats: AttentionStats) => void;
 }
 
 function describe(minutes: number): string {
@@ -24,53 +17,16 @@ function describe(minutes: number): string {
   return minutes > 0 ? `${t} مانده تا نقض تعهد` : `${t} تاخیر (فوری)`;
 }
 
-export default function AttentionList({ ids, messages, now = new Date(), onStatsChange }: Props) {
+export default function AttentionList({ queue: propQueue, messages = [], now }: Props) {
+  const derivedQueue = useAttentionQueue(messages, now);
+  const queue = propQueue ?? derivedQueue;
+
   const [filter, setFilter] = useState<'all' | 'urgent' | 'approaching'>('all');
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [approved, setApproved] = useState<Record<string, boolean>>({});
   const [busy, setBusy] = useState<string | null>(null);
 
-  const byId = useMemo(() => new Map(messages.map((m) => [m.message_id, m])), [messages]);
-
-  const itemsWithTime = useMemo(() => {
-    let targetMessages: Message[];
-    if (ids && ids.length > 0) {
-      targetMessages = ids.map((id) => byId.get(id)).filter((m): m is Message => Boolean(m));
-    } else {
-      targetMessages = messages.filter((m) => {
-        const isHigh = (m.severity_hint || m.severity) === 'high';
-        const isCanonical = !m.duplicate_of;
-        const isUnanswered = !m.answered_at;
-        return isHigh && isCanonical && isUnanswered;
-      });
-    }
-
-    const list = targetMessages.map((m) => ({
-      id: m.message_id,
-      m,
-      left: computeBusinessMinutesLeft(m.received_at, now, 2.0, m.sla_deadline_at),
-    }));
-
-    if (!ids || ids.length === 0) {
-      list.sort((a, b) => a.left - b.left);
-    }
-    return list;
-  }, [ids, messages, byId, now]);
-
-  const urgentCount = itemsWithTime.filter((item) => item.left <= 0).length;
-  const approachingCount = itemsWithTime.filter((item) => item.left > 0).length;
-
-  useEffect(() => {
-    if (onStatsChange) {
-      onStatsChange({
-        urgent: urgentCount,
-        approaching: approachingCount,
-        total: itemsWithTime.length,
-      });
-    }
-  }, [urgentCount, approachingCount, itemsWithTime.length, onStatsChange]);
-
-  const filteredItems = itemsWithTime.filter((item) => {
+  const filteredItems = queue.items.filter((item) => {
     if (filter === 'urgent') return item.left <= 0;
     if (filter === 'approaching') return item.left > 0;
     return true;
@@ -102,10 +58,14 @@ export default function AttentionList({ ids, messages, now = new Date(), onStats
     }
   }
 
+  function onApprove(messageId: string) {
+    setApproved((prev) => ({ ...prev, [messageId]: true }));
+  }
+
   return (
     <section className="card attention-card">
       <div className="attention-card-header">
-        <h2>پیام‌های نیازمند توجه ({itemsWithTime.length})</h2>
+        <h2>پیام‌های نیازمند توجه ({queue.totalCount})</h2>
         <div className="attention-tabs" role="tablist">
           <button
             type="button"
@@ -114,7 +74,7 @@ export default function AttentionList({ ids, messages, now = new Date(), onStats
             className={`tab-btn ${filter === 'all' ? 'active' : ''}`}
             onClick={() => setFilter('all')}
           >
-            همه ({itemsWithTime.length})
+            همه ({queue.totalCount})
           </button>
           <button
             type="button"
@@ -123,7 +83,7 @@ export default function AttentionList({ ids, messages, now = new Date(), onStats
             className={`tab-btn urgent-tab ${filter === 'urgent' ? 'active' : ''}`}
             onClick={() => setFilter('urgent')}
           >
-            🚨 فوری و معوق ({urgentCount})
+            🚨 فوری و معوق ({queue.urgentCount})
           </button>
           <button
             type="button"
@@ -132,7 +92,7 @@ export default function AttentionList({ ids, messages, now = new Date(), onStats
             className={`tab-btn approaching-tab ${filter === 'approaching' ? 'active' : ''}`}
             onClick={() => setFilter('approaching')}
           >
-            ⏳ در مهلت تعهد ({approachingCount})
+            ⏳ در مهلت تعهد ({queue.approachingCount})
           </button>
         </div>
       </div>
@@ -143,78 +103,110 @@ export default function AttentionList({ ids, messages, now = new Date(), onStats
         <ul className="attention-list">
           {filteredItems.map(({ id, m, left }) => {
             if (!m) return null;
-            const draftData = drafts[id];
+            const draftState = drafts[id];
             const isApproved = approved[id];
+            const isOverdue = left <= 0;
+
             return (
               <li
                 key={id}
+                className={`attention-item ${isOverdue ? 'attention-urgent' : 'attention-approaching'}`}
                 data-testid="attention-row"
                 data-message-id={id}
                 data-business-minutes-left={left}
-                className={left <= 0 ? 'row-urgent' : 'row-approaching'}
               >
-                <div className="attention-header">
-                  <code>{id}</code>
-                  {left <= 0 ? (
-                    <span className="badge badge-urgent">🚨 فوری (از موعد گذشته)</span>
-                  ) : (
-                    <span className="badge badge-approaching">⏳ در مهلت تعهد</span>
-                  )}
-                  {m.order_ref && <span className="order-badge">{m.order_ref}</span>}
-                  <span className="attention-subject" dir="auto">{m.subject}</span>
-                </div>
-                <div className="attention-meta">
-                  دریافت شده در {new Date(m.received_at).toLocaleString('fa-IR')} — {describe(left)}
-                </div>
-                <div className="attention-actions">
-                  <button
-                    type="button"
-                    data-testid="draft-button"
-                    disabled={busy === id}
-                    onClick={() => onDraft(m)}
-                  >
-                    {busy === id ? 'در حال تولید پیش‌نویس...' : 'پیش‌نویس پاسخ هوشمند'}
-                  </button>
-                </div>
-                {draftData && (
-                  <div className="draft-section">
-                    {draftData.blocked ? (
-                      <div className="draft-warning" data-testid="draft-warning">
-                        {draftData.warnings && draftData.warnings.length > 0
-                          ? draftData.warnings.join(' | ')
-                          : 'امکان تولید پیش‌نویس امن برای این پیام وجود ندارد.'}
-                      </div>
+                <div className="attention-summary">
+                  <div className="attention-meta">
+                    <span className="badge">{m.category}</span>
+                    {isOverdue ? (
+                      <span className="badge badge-urgent-pill">🚨 فوری (نقض تعهد)</span>
                     ) : (
-                      <div className="draft-editor">
-                        <textarea
-                          className="draft-text"
-                          data-testid="draft-text"
-                          rows={4}
-                          dir="auto"
-                          value={draftData.draft}
-                          onChange={(e) =>
-                            setDrafts((prev) => ({
-                              ...prev,
-                              [id]: { ...draftData, draft: e.target.value },
-                            }))
-                          }
-                        />
-                        <button
-                          type="button"
-                          className="draft-approve"
-                          data-testid="draft-approve"
-                          disabled={isApproved}
-                          onClick={() => {
-                            if (navigator.clipboard) {
-                              navigator.clipboard.writeText(draftData.draft);
-                            }
-                            setApproved((prev) => ({ ...prev, [id]: true }));
-                          }}
-                        >
-                          {isApproved ? 'تایید شد (کپی شد)' : 'تایید و کپی متن'}
-                        </button>
-                      </div>
+                      <span className="badge badge-approaching-pill">⏳ در مهلت تعهد</span>
                     )}
+                    <span className="time-left">{describe(left)}</span>
+                    {m.order_ref && (
+                      <span className="order-pill" dir="ltr">
+                        سفارش: <strong>{m.order_ref}</strong>
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="attention-subject">{m.subject || '(بدون عنوان)'}</h3>
+                  <p className="attention-snippet">{m.body}</p>
+                </div>
+
+                <div className="attention-actions">
+                  {!draftState && (
+                    <button
+                      type="button"
+                      className="btn secondary"
+                      onClick={() => onDraft(m)}
+                      disabled={busy === id}
+                      data-testid="draft-button"
+                    >
+                      {busy === id ? 'در حال نگارش...' : 'پیش‌نویس هوشمند'}
+                    </button>
+                  )}
+                </div>
+
+                {draftState && (
+                  <div className="draft-box">
+                    <div className="draft-header">
+                      <span>پیش‌نویس پاسخ پشتیبانی ({draftState.language === 'fa' ? 'فارسی' : 'انگلیسی'})</span>
+                      {draftState.blocked && (
+                        <span className="badge danger" data-testid="draft-warning">
+                          {draftState.warnings && draftState.warnings.length > 0
+                            ? draftState.warnings.join('، ')
+                            : 'نیازمند بررسی اپراتور (حاوی تعهدات مالی یا تاریخ قطعی)'}
+                        </span>
+                      )}
+
+                    </div>
+
+                    <textarea
+                      className="draft-editor"
+                      rows={4}
+                      value={draftState.draft}
+                      disabled={isApproved}
+                      data-testid="draft-text"
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setDrafts((prev) => ({
+                          ...prev,
+                          [id]: { ...draftState, draft: val },
+                        }));
+                      }}
+                    />
+
+                    <div className="draft-footer">
+                      <button
+                        type="button"
+                        className="btn secondary"
+                        disabled={busy === id || isApproved}
+                        onClick={() => onDraft(m)}
+                      >
+                        تولید مجدد
+                      </button>
+                      <button
+                        type="button"
+                        className={`btn ${isApproved ? 'success' : 'primary'}`}
+                        disabled={isApproved}
+                        onClick={() => onApprove(id)}
+                        data-testid="draft-approve"
+                      >
+                        {isApproved ? 'تأیید شد ✓' : 'تأیید و ارسال'}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn text"
+                        onClick={() => {
+                          if (navigator.clipboard) {
+                            navigator.clipboard.writeText(draftState.draft);
+                          }
+                        }}
+                      >
+                        کپی متن
+                      </button>
+                    </div>
                   </div>
                 )}
               </li>

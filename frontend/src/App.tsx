@@ -4,8 +4,9 @@ import type { AnalyzeResult, AnalysisProgress } from './types';
 import UploadForm from './components/UploadForm';
 import SummaryTiles from './components/SummaryTiles';
 import CategoryBreakdown from './components/CategoryBreakdown';
-import AttentionList, { type AttentionStats } from './components/AttentionList';
+import AttentionList from './components/AttentionList';
 import MessagesTable from './components/MessagesTable';
+import { useAttentionQueue } from './useAttentionQueue';
 
 export default function App() {
   const [result, setResult] = useState<AnalyzeResult | null>(null);
@@ -24,6 +25,8 @@ export default function App() {
     }, 30000);
     return () => clearInterval(timer);
   }, [fixedNow]);
+
+  const queue = useAttentionQueue(result?.messages ?? [], currentTime);
 
   async function handleSubmit(file: File, now?: string) {
     setLoading(true);
@@ -50,12 +53,6 @@ export default function App() {
     }
   }
 
-  const [attentionStats, setAttentionStats] = useState<AttentionStats>({
-    urgent: 0,
-    approaching: 0,
-    total: 0,
-  });
-
   return (
     <main className="container" dir="rtl">
       <h1>داشبورد تریاژ پشتیبانی بازارچه</h1>
@@ -66,20 +63,15 @@ export default function App() {
         <>
           <SummaryTiles
             total={result.total_unique_messages}
-            urgent={attentionStats.urgent}
-            approaching={attentionStats.approaching}
-            attentionTotal={attentionStats.total}
+            urgent={queue.urgentCount}
+            approaching={queue.approachingCount}
+            attentionTotal={queue.totalCount}
           />
           <CategoryBreakdown counts={result.category_counts} total={result.total_unique_messages} />
-          <AttentionList
-            messages={result.messages}
-            now={currentTime}
-            onStatsChange={setAttentionStats}
-          />
+          <AttentionList queue={queue} />
           <MessagesTable messages={result.messages} />
         </>
       )}
     </main>
   );
 }
-

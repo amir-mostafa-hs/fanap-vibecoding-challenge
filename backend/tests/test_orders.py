@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.orders import extract_order_ref
+from app.ingest import extract_order_ref
 
 
 def test_order_ref_field_preferred() -> None:

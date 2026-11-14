@@ -4,8 +4,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from app.dedup import mark_duplicates, normalize_body
-from app.ingest import load_messages
+from app.ingest import load_messages, mark_duplicates, normalize_body
 
 
 def test_normalize_body_whitespace_and_case() -> None:
