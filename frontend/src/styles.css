@@ -36,7 +36,6 @@ th, td { text-align: right; padding: 8px 10px; border-bottom: 1px solid #eceef2;
 .draft-approve { align-self: flex-start; background: #16a34a; }
 .draft-warning { padding: 8px 12px; background: #fff1f2; border: 1px solid #fecdd3; color: #be123c; border-radius: 6px; font-size: 13px; }
 
-/* New Summary & Attention List Enhancements */
 .summary-section { margin: 16px 0; }
 .tile-sub { font-size: 11px; color: #9ca3af; margin-top: 4px; }
 .tile.approaching .tile-value { color: #d97706; }
@@ -93,7 +92,6 @@ th, td { text-align: right; padding: 8px 10px; border-bottom: 1px solid #eceef2;
 .row-urgent { border-right: 4px solid #ef4444; padding-right: 12px !important; }
 .row-approaching { border-right: 4px solid #f59e0b; padding-right: 12px !important; }
 
-/* Progress Bar & Upload Streaming Styles */
 .upload-container { display: flex; flex-direction: column; gap: 16px; }
 .upload-form { display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
 .upload-form label { display: flex; flex-direction: column; gap: 4px; font-size: 14px; }

@@ -42,7 +42,6 @@ def load_messages(source: str | Path | IO[bytes] | IO[str]) -> pd.DataFrame:
     df["received_at"] = parse_timestamps(df["received_at"])
     df["answered_at"] = parse_timestamps(df["answered_at"])
 
-    # discard malformed rows
     df = df.dropna(subset=["received_at"])
 
     return df.reset_index(drop=True)

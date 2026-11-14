@@ -106,7 +106,6 @@ def analyze(
     df = enrich(df, now, settings)
     report = build_report(df, include_details=include_details)
     if prefetch_drafts:
-        # drafts are generated up front so they are instant when requested
         urgent = set(report["urgent_message_ids"])
         prefetch([m for m in report["messages"] if m["message_id"] in urgent], settings)
     return report

@@ -71,7 +71,6 @@ export default function App() {
       minutesLeft: computeBusinessMinutesLeft(m.received_at, currentTime, 2.0),
     }));
 
-    // Sort ascending: lowest minutesLeft (most overdue) first
     withMinutes.sort((a, b) => a.minutesLeft - b.minutesLeft);
 
     const sortedMessages = withMinutes.map((item) => item.message);

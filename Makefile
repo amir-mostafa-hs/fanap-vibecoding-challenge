@@ -13,93 +13,93 @@ NPM := npm
         analyze eval-cli generate-predictions \
         clean
 
-help: ## نمایش این راهنما و تمام دستورات موجود
+help: ## Display this help message with all available commands
 	@echo "========================================================================"
-	@echo " Bazarcheh Support Triage Dashboard - دستورات در دسترس پروژه"
+	@echo " Bazarcheh Support Triage Dashboard - Available Commands"
 	@echo "========================================================================"
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  \033[36m%-22s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 	@echo "========================================================================"
 
 # -----------------------------------------------------------------------------
-# مدیریت کانتینرها (Docker Lifecycle)
+# Docker Lifecycle
 # -----------------------------------------------------------------------------
 
-up: ## اجرای تمام سرویس‌ها در پس‌زمینه (Backend: 8000, Frontend: 5173)
+up: ## Start all services in background (Backend: 8000, Frontend: 5173)
 	$(DOCKER_COMPOSE) up -d
 
-up-build: ## بیلد مجدد ایمیج‌ها و اجرای سرویس‌ها در پس‌زمینه
+up-build: ## Rebuild images and start all services in background
 	$(DOCKER_COMPOSE) up -d --build
 
-down: ## متوقف‌سازی و حذف کانتینرها و شبکه‌های داکر
+down: ## Stop and remove containers and networks
 	$(DOCKER_COMPOSE) down
 
-restart: ## ری‌استارت کردن تمام کانتینرها
+restart: ## Restart all running containers
 	$(DOCKER_COMPOSE) restart
 
-logs: ## مشاهده لاگ‌های زنده تمام سرویس‌ها
+logs: ## Follow live logs from all containers
 	$(DOCKER_COMPOSE) logs -f
 
-ps: ## مشاهده وضعیت کانتینرهای در حال اجرا
+ps: ## View status of running containers
 	$(DOCKER_COMPOSE) ps
 
-build: ## بیلد ایمیج‌های داکر پروژه
+build: ## Build all Docker images
 	$(DOCKER_COMPOSE) build
 
 # -----------------------------------------------------------------------------
-# تست‌ها (Testing)
+# Testing
 # -----------------------------------------------------------------------------
 
-test: test-backend test-frontend ## اجرای تمام تست‌ها (بک‌اند داخل داکر + فرانت‌اند)
+test: test-backend test-frontend ## Run all test suites (Backend via Docker + Frontend via Vitest)
 
-test-backend: ## اجرای تست‌های بک‌اند (Pytest) داخل داکر
+test-backend: ## Run backend pytest suite inside Docker container
 	$(DOCKER_COMPOSE) run --rm backend pytest
 
-test-backend-local: ## اجرای تست‌های بک‌اند به صورت محلی با Pytest
+test-backend-local: ## Run backend pytest suite locally
 	pytest backend/tests
 
-test-frontend: ## اجرای تست‌های فرانت‌اند با Vitest
+test-frontend: ## Run frontend test suite via Vitest
 	$(NPM) test --prefix frontend
 
 # -----------------------------------------------------------------------------
-# توسعه محلی فرانت‌اند (Frontend Local Development)
+# Frontend Local Development
 # -----------------------------------------------------------------------------
 
-frontend-install: ## نصب وابستگی‌های پکیج فرانت‌اند
+frontend-install: ## Install frontend dependencies
 	$(NPM) install --prefix frontend
 
-frontend-dev: ## اجرای سرور توسعه Vite فرانت‌اند به صورت لوکال
+frontend-dev: ## Run frontend Vite development server locally
 	$(NPM) run dev --prefix frontend
 
-frontend-build: ## بررسی تایپ‌ها و کامپایل نسخه پروداکشن فرانت‌اند
+frontend-build: ## Type-check and build production bundle
 	$(NPM) run build --prefix frontend
 
 # -----------------------------------------------------------------------------
-# توسعه محلی بک‌اند (Backend Local Development)
+# Backend Local Development
 # -----------------------------------------------------------------------------
 
-backend-install: ## نصب وابستگی‌های پایتون بک‌اند به صورت لوکال
+backend-install: ## Install backend Python dependencies locally
 	$(PYTHON) -m pip install -r backend/requirements.txt
 
-backend-dev: ## اجرای سرور توسعه FastAPI به صورت لوکال با قابلیت Reload
+backend-dev: ## Run backend FastAPI dev server locally with auto-reload
 	uvicorn app.main:app --app-dir backend --reload --port 8000
 
 # -----------------------------------------------------------------------------
-# پردازش دسته‌ای و ارزیابی (CLI & Batch Evaluation)
+# CLI & Batch Evaluation
 # -----------------------------------------------------------------------------
 
-analyze: ## اجرای تحلیل دسته‌ای CLI روی داده نمونه و تولید خروجی JSON
+analyze: ## Run batch CLI analysis on sample data and write JSON report
 	$(DOCKER_COMPOSE) run --rm backend python -m app.cli analyze \
 		--input /data/messages_sample.csv \
 		--output /data/analysis_sample.json \
 		--now 2026-10-26T10:30:00Z
 
-eval-cli: ## اجرای ارزیابی CLI روی eval_messages.csv در زمان مرجع
+eval-cli: ## Run batch CLI evaluation on eval_messages.csv at reference time
 	$(DOCKER_COMPOSE) run --rm backend python -m app.cli analyze \
 		--input /data/eval_messages.csv \
 		--output /data/eval_output.json \
 		--now 2026-04-15T07:00:00Z
 
-generate-predictions: ## تولید مجدد فایل predictions.csv بر اساس eval_messages.csv
+generate-predictions: ## Re-generate predictions.csv from evaluation dataset
 	$(DOCKER_COMPOSE) run --rm backend python -c '\
 import json, csv, sys; \
 from pathlib import Path; \
@@ -113,11 +113,11 @@ with open("/data/../predictions.csv", "w", newline="", encoding="utf-8") as f: \
 print("predictions.csv generated successfully.")'
 
 # -----------------------------------------------------------------------------
-# پاک‌سازی (Cleanup)
+# Cleanup
 # -----------------------------------------------------------------------------
 
-clean: ## حذف فایل‌های کش پایتون، پوشه‌های بیلد و فایل‌های موقت
+clean: ## Remove Python cache files, build artifacts, and temporary directories
 	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
 	rm -rf frontend/dist frontend/.vite
-	@echo "کش‌ها و خروجی‌های بیلد پاک‌سازی شدند."
+	@echo "Cleaned cache and build directories."

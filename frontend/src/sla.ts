@@ -42,13 +42,13 @@ export const HOLIDAYS_1405 = new Set([
 
 export interface TehranDateParts {
   year: number;
-  month: number; // 1-12
+  month: number;
   day: number;
-  dayOfWeek: number; // 0-6
+  dayOfWeek: number;
   hours: number;
   minutes: number;
   seconds: number;
-  dateKey: string; // YYYY-MM-DD
+  dateKey: string;
 }
 
 export function toTehranParts(date: Date): TehranDateParts {

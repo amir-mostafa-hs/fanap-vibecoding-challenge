@@ -12,8 +12,7 @@ TEHRAN_TZ = timezone(timedelta(hours=3, minutes=30), name="Asia/Tehran")
 BUSINESS_START = time(9, 0)
 BUSINESS_END = time(17, 0)
 
-# Monday=0, Tuesday=1, Wednesday=2, Thursday=3, Friday=4, Saturday=5, Sunday=6
-# Saturday to Wednesday:
+# Iranian business schedule (Saturday through Wednesday):
 BUSINESS_WEEKDAYS = frozenset({5, 6, 0, 1, 2})
 
 # Official 1405 public holidays mapped to Gregorian dates (YYYY-MM-DD):
