@@ -6,7 +6,7 @@
 
 **Status:** ready-for-agent
 
-- [ ] `AttentionList.tsx` (and/or an associated hook) manages its own filtering, sorting, tab state, and metric counts from raw messages without requiring `App.tsx` to pre-calculate and pass redundant `attentionIds` and `urgentCount`.
-- [ ] Client countdowns consume `sla_deadline_at` from message objects to compute minutes left directly, deprecating duplicate calendar maintenance.
-- [ ] `App.tsx` interface shrinks to pass only the analysis messages and clock.
-- [ ] All frontend unit tests pass (`make test-frontend`), and interactive tab filtering and countdowns work as expected.
+- [x] `AttentionList.tsx` (and/or an associated hook) manages its own filtering, sorting, tab state, and metric counts from raw messages without requiring `App.tsx` to pre-calculate and pass redundant `attentionIds` and `urgentCount`.
+- [x] Client countdowns consume `sla_deadline_at` from message objects to compute minutes left directly, deprecating duplicate calendar maintenance.
+- [x] `App.tsx` interface shrinks to pass only the analysis messages and clock.
+- [x] All frontend unit tests pass (`make test-frontend`), and interactive tab filtering and countdowns work as expected.

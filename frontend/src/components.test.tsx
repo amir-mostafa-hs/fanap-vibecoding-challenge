@@ -142,6 +142,37 @@ describe('AttentionList & Draft reply workflow', () => {
     expect(screen.getAllByTestId('attention-row')).toHaveLength(2);
   });
 
+  it('deep module: auto-filters candidates and computes stats when ids prop is omitted', () => {
+    const onStatsChange = vi.fn();
+    const answeredMessage: Message = {
+      ...sampleMessage1,
+      message_id: 'M103',
+      answered_at: '2026-10-24T11:00:00+03:30',
+    };
+    const duplicateMessage: Message = {
+      ...sampleMessage1,
+      message_id: 'M104',
+      duplicate_of: 'M101',
+    };
+    render(
+      <AttentionList
+        messages={[sampleMessage1, sampleMessage2, answeredMessage, duplicateMessage]}
+        now={new Date('2026-10-24T12:30:00+03:30')}
+        onStatsChange={onStatsChange}
+      />
+    );
+    // Answered and duplicate messages are filtered out internally:
+    const rows = screen.getAllByTestId('attention-row');
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toHaveAttribute('data-message-id', 'M101');
+    expect(rows[1]).toHaveAttribute('data-message-id', 'M102');
+    expect(onStatsChange).toHaveBeenCalledWith({
+      urgent: 1,
+      approaching: 1,
+      total: 2,
+    });
+  });
+
   it('handles successful draft reply with textarea and approve button', async () => {
     vi.spyOn(api, 'requestDraft').mockResolvedValueOnce({
       message_id: 'M101',

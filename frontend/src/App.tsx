@@ -1,12 +1,11 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { analyzeStream } from './api';
-import type { AnalyzeResult, Message, AnalysisProgress } from './types';
+import type { AnalyzeResult, AnalysisProgress } from './types';
 import UploadForm from './components/UploadForm';
 import SummaryTiles from './components/SummaryTiles';
 import CategoryBreakdown from './components/CategoryBreakdown';
-import AttentionList from './components/AttentionList';
+import AttentionList, { type AttentionStats } from './components/AttentionList';
 import MessagesTable from './components/MessagesTable';
-import { computeBusinessMinutesLeft } from './sla';
 
 export default function App() {
   const [result, setResult] = useState<AnalyzeResult | null>(null);
@@ -51,38 +50,11 @@ export default function App() {
     }
   }
 
-  // Filter and sort the single "Needs Attention" list:
-  // Every high-severity message that is not a resend (duplicate_of === null)
-  // and has not been answered yet (answered_at is null or empty).
-  // Sorted: most overdue message goes at the top (lowest/most negative business minutes left),
-  // followed by those closest to breaching.
-  const { attentionMessages, attentionIds, urgentCount } = useMemo(() => {
-    if (!result) return { attentionMessages: [], attentionIds: [], urgentCount: 0 };
-
-    const candidates = result.messages.filter((m: Message) => {
-      const isHigh = (m.severity_hint || m.severity) === 'high';
-      const isCanonical = !m.duplicate_of;
-      const isUnanswered = !m.answered_at;
-      return isHigh && isCanonical && isUnanswered;
-    });
-
-    const withMinutes = candidates.map((m) => ({
-      message: m,
-      minutesLeft: computeBusinessMinutesLeft(m.received_at, currentTime, 2.0),
-    }));
-
-    withMinutes.sort((a, b) => a.minutesLeft - b.minutesLeft);
-
-    const sortedMessages = withMinutes.map((item) => item.message);
-    const sortedIds = sortedMessages.map((m) => m.message_id);
-    const overdueCount = withMinutes.filter((item) => item.minutesLeft <= 0).length;
-
-    return {
-      attentionMessages: sortedMessages,
-      attentionIds: sortedIds,
-      urgentCount: overdueCount,
-    };
-  }, [result, currentTime]);
+  const [attentionStats, setAttentionStats] = useState<AttentionStats>({
+    urgent: 0,
+    approaching: 0,
+    total: 0,
+  });
 
   return (
     <main className="container" dir="rtl">
@@ -94,15 +66,20 @@ export default function App() {
         <>
           <SummaryTiles
             total={result.total_unique_messages}
-            urgent={urgentCount}
-            approaching={attentionMessages.length - urgentCount}
-            attentionTotal={attentionMessages.length}
+            urgent={attentionStats.urgent}
+            approaching={attentionStats.approaching}
+            attentionTotal={attentionStats.total}
           />
           <CategoryBreakdown counts={result.category_counts} total={result.total_unique_messages} />
-          <AttentionList ids={attentionIds} messages={attentionMessages} now={currentTime} />
+          <AttentionList
+            messages={result.messages}
+            now={currentTime}
+            onStatsChange={setAttentionStats}
+          />
           <MessagesTable messages={result.messages} />
         </>
       )}
     </main>
   );
 }
+

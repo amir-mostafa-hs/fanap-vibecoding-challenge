@@ -134,14 +134,24 @@ export function businessHoursBetween(start: Date, end: Date): number {
 /**
  * Computes integer business minutes remaining until the 2h SLA breaches.
  * 0 or negative = overdue.
+ * If authoritative deadlineAt is provided, computes wall-clock minutes directly.
  */
 export function computeBusinessMinutesLeft(
   receivedAt: string | Date,
   now: Date = new Date(),
-  slaHours = 2.0
+  slaHours = 2.0,
+  deadlineAt?: string | null
 ): number {
+  if (deadlineAt) {
+    const deadlineMs = new Date(deadlineAt).getTime();
+    if (!Number.isNaN(deadlineMs)) {
+      const nowMs = now.getTime();
+      return Math.round((deadlineMs - nowMs) / 60000);
+    }
+  }
   const startDate = typeof receivedAt === 'string' ? new Date(receivedAt) : receivedAt;
   const elapsedBusinessHours = businessHoursBetween(startDate, now);
   const minutesLeft = (slaHours - elapsedBusinessHours) * 60;
   return Math.round(minutesLeft);
 }
+

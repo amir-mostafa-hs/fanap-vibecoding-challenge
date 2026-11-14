@@ -23,7 +23,9 @@ export interface Message {
   body: string;
   severity: string | null;
   severity_hint: string | null;
+  sla_deadline_at?: string | null;
 }
+
 
 export interface AnalyzeResult {
   total_unique_messages: number;

@@ -1,12 +1,19 @@
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import type { Draft, Message } from '../types';
 import { requestDraft } from '../api';
 import { computeBusinessMinutesLeft } from '../sla';
 
+export interface AttentionStats {
+  urgent: number;
+  approaching: number;
+  total: number;
+}
+
 interface Props {
-  ids: string[];
   messages: Message[];
   now?: Date;
+  ids?: string[];
+  onStatsChange?: (stats: AttentionStats) => void;
 }
 
 function describe(minutes: number): string {
@@ -17,21 +24,51 @@ function describe(minutes: number): string {
   return minutes > 0 ? `${t} مانده تا نقض تعهد` : `${t} تاخیر (فوری)`;
 }
 
-export default function AttentionList({ ids, messages, now = new Date() }: Props) {
+export default function AttentionList({ ids, messages, now = new Date(), onStatsChange }: Props) {
   const [filter, setFilter] = useState<'all' | 'urgent' | 'approaching'>('all');
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [approved, setApproved] = useState<Record<string, boolean>>({});
   const [busy, setBusy] = useState<string | null>(null);
-  const byId = new Map(messages.map((m) => [m.message_id, m]));
 
-  const itemsWithTime = ids.map((id) => {
-    const m = byId.get(id);
-    const left = m ? computeBusinessMinutesLeft(m.received_at, now) : 0;
-    return { id, m, left };
-  });
+  const byId = useMemo(() => new Map(messages.map((m) => [m.message_id, m])), [messages]);
+
+  const itemsWithTime = useMemo(() => {
+    let targetMessages: Message[];
+    if (ids && ids.length > 0) {
+      targetMessages = ids.map((id) => byId.get(id)).filter((m): m is Message => Boolean(m));
+    } else {
+      targetMessages = messages.filter((m) => {
+        const isHigh = (m.severity_hint || m.severity) === 'high';
+        const isCanonical = !m.duplicate_of;
+        const isUnanswered = !m.answered_at;
+        return isHigh && isCanonical && isUnanswered;
+      });
+    }
+
+    const list = targetMessages.map((m) => ({
+      id: m.message_id,
+      m,
+      left: computeBusinessMinutesLeft(m.received_at, now, 2.0, m.sla_deadline_at),
+    }));
+
+    if (!ids || ids.length === 0) {
+      list.sort((a, b) => a.left - b.left);
+    }
+    return list;
+  }, [ids, messages, byId, now]);
 
   const urgentCount = itemsWithTime.filter((item) => item.left <= 0).length;
   const approachingCount = itemsWithTime.filter((item) => item.left > 0).length;
+
+  useEffect(() => {
+    if (onStatsChange) {
+      onStatsChange({
+        urgent: urgentCount,
+        approaching: approachingCount,
+        total: itemsWithTime.length,
+      });
+    }
+  }, [urgentCount, approachingCount, itemsWithTime.length, onStatsChange]);
 
   const filteredItems = itemsWithTime.filter((item) => {
     if (filter === 'urgent') return item.left <= 0;
@@ -68,7 +105,7 @@ export default function AttentionList({ ids, messages, now = new Date() }: Props
   return (
     <section className="card attention-card">
       <div className="attention-card-header">
-        <h2>پیام‌های نیازمند توجه ({ids.length})</h2>
+        <h2>پیام‌های نیازمند توجه ({itemsWithTime.length})</h2>
         <div className="attention-tabs" role="tablist">
           <button
             type="button"
@@ -77,7 +114,7 @@ export default function AttentionList({ ids, messages, now = new Date() }: Props
             className={`tab-btn ${filter === 'all' ? 'active' : ''}`}
             onClick={() => setFilter('all')}
           >
-            همه ({ids.length})
+            همه ({itemsWithTime.length})
           </button>
           <button
             type="button"
