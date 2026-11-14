@@ -45,10 +45,12 @@ Processes an uploaded support export CSV and returns the complete triage report.
         "subject": "تحویل در روز تعطیل",
         "body": "...",
         "severity": "low",
-        "severity_hint": "low"
+        "severity_hint": "low",
+        "sla_deadline_at": "2026-08-22T10:58:00Z"
       }
     ]
   }
+
   ```
 
 #### Streaming Mode (`stream=true`)

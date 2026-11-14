@@ -50,3 +50,22 @@ All vertical slices, bug fixes, and performance enhancements across the project 
 - **Code Standards & Cleanup (`90069ad`):**
   - Removed all Persian comments from codebase files and translated Makefile descriptions to English.
   - Pruned trivial and redundant comments, leaving only necessary comments on complex SLA and safety logic in English.
+
+---
+
+## Architecture Deepening & Modularity (`6ee9eff`)
+
+- **Ticket 01 - Consolidated Intake Module (`2f238e3`):**
+  - Consolidated CSV loading, Persian/Arabic digit normalization, order extraction, and deduplication into a unified deep intake module (`backend/app/ingest.py`).
+  - Deprecated shallow helper files `orders.py` and `dedup.py` into backward-compatibility re-exports.
+- **Ticket 02 - Deep SLA Module & Unified Generator (`c9328d2`):**
+  - Folded shallow `urgency.py` into deep `backend/app/sla.py`.
+  - Added deterministic deadline calculation `calculate_sla_deadline` emitting `sla_deadline_at`.
+  - Unified `analyze()` and `analyze_stream()` across a single shared stage generator in `analysis.py`.
+- **Ticket 03 - Deep Frontend Attention Queue & Authoritative Deadlines (`c2cc697`):**
+  - Deepened `AttentionList.tsx` to self-manage filtering, sorting, tab switching, and metric counts without prop leaking from `App.tsx`.
+  - Enabled $O(1)$ wall-clock countdown math using backend-provided `sla_deadline_at`.
+- **Ticket 04 - E2E Verification & Contract Hardening (`6ee9eff`):**
+  - Verified 31 backend tests and 18 frontend tests pass 100% green (`make test`).
+  - Validated live container execution and CLI batch analysis.
+

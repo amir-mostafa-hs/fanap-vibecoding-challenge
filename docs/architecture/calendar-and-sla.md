@@ -58,3 +58,12 @@ An inquiry is defined as **Urgent** (`is_urgent = true`) if and only if:
 4. Elapsed business hours $\ge 2.0$ hours (i.e. `business_minutes_left <= 0`).
 
 *Note:* Answered messages are considered handled and are never marked urgent, regardless of whether the reply was delayed.
+
+---
+
+## 4. Deterministic Deadline Calculation (`calculate_sla_deadline`)
+
+To prevent calendar drift between backend and frontend tiers, the backend acts as the single source of truth for SLA deadlines:
+- **Calculation:** `calculate_sla_deadline(received_at, sla_hours=2.0)` advances through Iranian working hours and skips official holidays to find the exact point in time when SLA breaches.
+- **Payload Emission:** Serialized as `sla_deadline_at` (ISO-8601 UTC timestamp) in detailed message records.
+- **Client Advantage:** Web clients calculate remaining minutes in $O(1)$ wall-clock math (`(deadline - now) / 60000`) without maintaining independent holiday tables.
