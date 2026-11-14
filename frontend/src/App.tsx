@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
-import { analyze } from './api';
-import type { AnalyzeResult, Message } from './types';
+import { analyzeStream } from './api';
+import type { AnalyzeResult, Message, AnalysisProgress } from './types';
 import UploadForm from './components/UploadForm';
 import SummaryTiles from './components/SummaryTiles';
 import CategoryBreakdown from './components/CategoryBreakdown';
@@ -11,6 +11,7 @@ import { computeBusinessMinutesLeft } from './sla';
 export default function App() {
   const [result, setResult] = useState<AnalyzeResult | null>(null);
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState<AnalysisProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [fixedNow, setFixedNow] = useState<Date | null>(null);
   const [currentTime, setCurrentTime] = useState<Date>(() => new Date());
@@ -28,8 +29,11 @@ export default function App() {
   async function handleSubmit(file: File, now?: string) {
     setLoading(true);
     setError(null);
+    setProgress({ step: 'init', progress: 5, message: 'ارسال فایل اکسپورت به سرور...' });
     try {
-      const res = await analyze(file, now);
+      const res = await analyzeStream(file, now, (evt) => {
+        setProgress(evt);
+      });
       setResult(res);
       if (now) {
         const parsed = new Date(now);
@@ -85,7 +89,7 @@ export default function App() {
     <main className="container" dir="rtl">
       <h1>داشبورد تریاژ پشتیبانی بازارچه</h1>
       <p className="muted">فایل اکسپورت روزانه پیام‌های پشتیبانی را برای تحلیل و اولویت‌بندی بارگذاری کنید.</p>
-      <UploadForm onSubmit={handleSubmit} loading={loading} />
+      <UploadForm onSubmit={handleSubmit} loading={loading} progress={progress} />
       {error && <p className="error">{error}</p>}
       {result && (
         <>

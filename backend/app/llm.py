@@ -107,6 +107,7 @@ class LLMClient:
         messages: list[MessageToClassify],
         chunk_size: int = 20,
         max_workers: int = 6,
+        progress_callback: Any | None = None,
     ) -> dict[str, Classification]:
         """Classify messages in concurrent batches to minimize latency and avoid gateway timeouts.
 
@@ -118,11 +119,15 @@ class LLMClient:
         chunks = [messages[i : i + chunk_size] for i in range(0, len(messages), chunk_size)]
         results: dict[str, Classification] = {}
         workers = min(max_workers, len(chunks))
+        completed_count = 0
 
         with httpx.Client(timeout=self._timeout) as client:
             with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
                 futures = [executor.submit(self._classify_chunk, client, chunk) for chunk in chunks]
                 for future in concurrent.futures.as_completed(futures):
+                    completed_count += 1
+                    if progress_callback:
+                        progress_callback(completed_count, len(chunks))
                     for mid, classification in future.result():
                         results[mid] = classification
 

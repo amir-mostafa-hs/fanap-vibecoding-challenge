@@ -3,7 +3,9 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import IO, Any
+import queue
+import threading
+from typing import IO, Any, Iterator
 
 import pandas as pd
 
@@ -108,3 +110,102 @@ def analyze(
         urgent = set(report["urgent_message_ids"])
         prefetch([m for m in report["messages"] if m["message_id"] in urgent], settings)
     return report
+
+
+def analyze_stream(
+    source: str | Path | IO[bytes] | IO[str],
+    now: datetime | None = None,
+    settings: Settings | None = None,
+    include_details: bool = True,
+) -> Iterator[dict[str, Any]]:
+    settings = settings or get_settings()
+    now = now or datetime.now(timezone.utc)
+
+    yield {
+        "step": "ingest",
+        "progress": 10,
+        "message": "بارگذاری و اعتبارسنجی ساختار فایل اکسپورت...",
+    }
+    df = load_messages(source)
+
+    yield {
+        "step": "dedup",
+        "progress": 25,
+        "message": "استخراج شناسه سفارش و پالایش پیام‌های تکراری...",
+    }
+    df = df.copy()
+    df["order_ref"] = [extract_order_ref(o, b) for o, b in zip(df["order_ref"], df["body"])]
+    df["duplicate_of"] = mark_duplicates(df)
+
+    canonical = df["duplicate_of"].isna()
+    canonical_count = int(canonical.sum())
+
+    yield {
+        "step": "classify",
+        "progress": 30,
+        "message": f"آغاز دسته‌بندی هوشمند {canonical_count} پیام یکتا...",
+    }
+
+    q: queue.Queue[dict[str, Any] | None] = queue.Queue()
+    categories_holder: list[pd.Series] = []
+    error_holder: list[Exception] = []
+
+    def progress_callback(done: int, total: int) -> None:
+        pct = 30 + int((done / total) * 55)
+        q.put({
+            "step": "classify",
+            "progress": pct,
+            "message": f"دسته‌بندی پیام‌ها: بسته {done} از {total} تکمیل شد ({pct}٪)...",
+        })
+
+    def run_classify() -> None:
+        try:
+            cats = classify_messages(df[canonical], settings, progress_callback=progress_callback)
+            categories_holder.append(cats)
+        except Exception as e:
+            error_holder.append(e)
+        finally:
+            q.put(None)
+
+    th = threading.Thread(target=run_classify, daemon=True)
+    th.start()
+
+    while True:
+        event = q.get()
+        if event is None:
+            break
+        yield event
+
+    th.join()
+    if error_holder:
+        raise error_holder[0]
+
+    categories = categories_holder[0]
+    by_id = dict(zip(df.loc[canonical, "message_id"], categories))
+    df["category"] = [
+        by_id[dup if dup is not None else mid]
+        for mid, dup in zip(df["message_id"], df["duplicate_of"])
+    ]
+
+    yield {
+        "step": "sla",
+        "progress": 90,
+        "message": "محاسبه قوانین ساعات کاری ایران و اولویت‌بندی تعهد SLA...",
+    }
+
+    df["is_urgent"] = [
+        bool(is_canonical)
+        and is_urgent(hint, received, answered, now, settings.urgent_sla_business_hours)
+        for is_canonical, hint, received, answered in zip(
+            canonical, df["severity_hint"], df["received_at"], df["answered_at"]
+        )
+    ]
+
+    report = build_report(df, include_details=include_details)
+
+    yield {
+        "step": "complete",
+        "progress": 100,
+        "message": "تحلیل با موفقیت انجام شد.",
+        "result": report,
+    }

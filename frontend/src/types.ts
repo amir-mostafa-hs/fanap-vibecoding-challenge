@@ -39,3 +39,11 @@ export interface Draft {
   blocked: boolean;
   warnings: string[];
 }
+
+export interface AnalysisProgress {
+  step: string;
+  progress: number;
+  message: string;
+  result?: AnalyzeResult;
+  error?: string;
+}

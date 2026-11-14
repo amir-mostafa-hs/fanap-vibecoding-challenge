@@ -27,6 +27,24 @@ describe('UploadForm', () => {
     expect(button).toBeInTheDocument();
     expect(button).toBeDisabled(); // disabled until file chosen
   });
+
+  it('renders live progress bar and status message when loading', () => {
+    const onSubmit = vi.fn();
+    render(
+      <UploadForm
+        onSubmit={onSubmit}
+        loading={true}
+        progress={{
+          step: 'classify',
+          progress: 65,
+          message: 'دسته‌بندی پیام‌ها: بسته ۴ از ۶ تکمیل شد (۶۵٪)...',
+        }}
+      />
+    );
+    expect(screen.getByTestId('progress-section')).toBeInTheDocument();
+    expect(screen.getByTestId('progress-bar')).toHaveStyle({ width: '65%' });
+    expect(screen.getByTestId('progress-msg')).toHaveTextContent('دسته‌بندی پیام‌ها: بسته ۴ از ۶ تکمیل شد');
+  });
 });
 
 describe('CategoryBreakdown', () => {

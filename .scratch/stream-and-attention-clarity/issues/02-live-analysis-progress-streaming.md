@@ -4,18 +4,18 @@
 
 **Blocked by:** 01 (Attention List Clarity, Filter Tabs & Metrics Breakdown)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Add progress tracking and callback hooks in `backend/app/llm.py` and `backend/app/classify.py`.
-- [ ] Add generator function in `backend/app/analysis.py` yielding progress events:
+- [x] Add progress tracking and callback hooks in `backend/app/llm.py` and `backend/app/classify.py`.
+- [x] Add generator function in `backend/app/analysis.py` yielding progress events:
   - 10% (Ingest & validation)
   - 25% (Dedup & order extraction)
   - 30%..85% (Concurrent LLM classification progress per completed batch)
   - 90% (SLA calculation)
   - 100% (Complete with full report payload)
-- [ ] Support `POST /api/analyze?stream=true` with `StreamingResponse(..., media_type="text/event-stream")` and `X-Accel-Buffering: no` in `backend/app/api.py`.
-- [ ] Ensure `POST /api/analyze` without `stream=true` continues to return traditional JSON.
-- [ ] Configure `proxy_buffering off;` for `/api/` in `frontend/nginx.conf`.
-- [ ] Update frontend client (`api.ts`) to consume SSE via `ReadableStreamDefaultReader`.
-- [ ] Add interactive progress UI (percentage bar + stage checklist) in `UploadForm.tsx`.
-- [ ] Automated tests in backend (`test_api.py`) and frontend (`UploadForm.test.tsx`).
+- [x] Support `POST /api/analyze?stream=true` with `StreamingResponse(..., media_type="text/event-stream")` and `X-Accel-Buffering: no` in `backend/app/api.py`.
+- [x] Ensure `POST /api/analyze` without `stream=true` continues to return traditional JSON.
+- [x] Configure `proxy_buffering off;` for `/api/` in `frontend/nginx.conf`.
+- [x] Update frontend client (`api.ts`) to consume SSE via `ReadableStreamDefaultReader`.
+- [x] Add interactive progress UI (percentage bar + stage checklist) in `UploadForm.tsx`.
+- [x] Automated tests in backend (`test_api.py`) and frontend (`UploadForm.test.tsx` in `components.test.tsx`).

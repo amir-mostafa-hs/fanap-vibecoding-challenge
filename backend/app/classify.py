@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import pandas as pd
 
+from typing import Any, Callable
+
 from .config import Settings
 from .llm import LLMClient, MessageToClassify
 
@@ -43,7 +45,11 @@ def classify_keywords(subject: str, body: str) -> str:
     return "other"
 
 
-def classify_messages(df: pd.DataFrame, settings: Settings) -> pd.Series:
+def classify_messages(
+    df: pd.DataFrame,
+    settings: Settings,
+    progress_callback: Callable[[int, int], None] | None = None,
+) -> pd.Series:
     """Return a category per row of ``df``."""
     if not settings.llm_base_url:
         return pd.Series(
@@ -58,7 +64,7 @@ def classify_messages(df: pd.DataFrame, settings: Settings) -> pd.Series:
             MessageToClassify(message_id=m, subject=s, body=b)
             for m, s, b in zip(df["message_id"], df["subject"], df["body"])
         ]
-        results = client.classify(batch)
+        results = client.classify(batch, progress_callback=progress_callback)
     except Exception:
         results = {}
 
