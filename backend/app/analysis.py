@@ -13,7 +13,7 @@ from .classify import classify_messages
 from .config import Settings, get_settings
 from .drafts import prefetch
 from .ingest import canonicalize, load_and_canonicalize, load_messages
-from .urgency import is_urgent
+from .sla import calculate_sla_deadline, is_urgent
 
 
 def parse_now(value: str | None) -> datetime:
@@ -31,15 +31,20 @@ def _iso(value: Any) -> str | None:
     return pd.Timestamp(value).tz_convert("UTC").strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def enrich(df: pd.DataFrame, now: datetime, settings: Settings) -> pd.DataFrame:
-    """Add order_ref, duplicate_of, category and is_urgent columns."""
+def enrich(
+    df: pd.DataFrame,
+    now: datetime,
+    settings: Settings,
+    progress_callback: Any = None,
+) -> pd.DataFrame:
+    """Add order_ref, duplicate_of, category, is_urgent and sla_deadline_at columns."""
     if "duplicate_of" not in df.columns or "order_ref" not in df.columns:
         df = canonicalize(df)
     else:
         df = df.copy()
 
     canonical = df["duplicate_of"].isna()
-    categories = classify_messages(df[canonical], settings)
+    categories = classify_messages(df[canonical], settings, progress_callback=progress_callback)
     by_id = dict(zip(df.loc[canonical, "message_id"], categories))
     df["category"] = [
         by_id[dup if dup is not None else mid]
@@ -52,6 +57,10 @@ def enrich(df: pd.DataFrame, now: datetime, settings: Settings) -> pd.DataFrame:
         for is_canonical, hint, received, answered in zip(
             canonical, df["severity_hint"], df["received_at"], df["answered_at"]
         )
+    ]
+    df["sla_deadline_at"] = [
+        calculate_sla_deadline(recv, settings.urgent_sla_business_hours) if is_canon else None
+        for is_canon, recv in zip(canonical, df["received_at"])
     ]
     return df
 
@@ -80,6 +89,7 @@ def build_report(df: pd.DataFrame, include_details: bool = False) -> dict[str, A
                     "body": row.body,
                     "severity": row.severity_hint,
                     "severity_hint": row.severity_hint,
+                    "sla_deadline_at": _iso(row.sla_deadline_at),
                 }
             )
         messages.append(item)
@@ -101,9 +111,11 @@ def analyze(
 ) -> dict[str, Any]:
     settings = settings or get_settings()
     now = now or datetime.now(timezone.utc)
-    df = load_and_canonicalize(source)
-    df = enrich(df, now, settings)
-    report = build_report(df, include_details=include_details)
+    report: dict[str, Any] = {}
+    for event in analyze_stream(source, now, settings, include_details=include_details):
+        if event.get("step") == "complete":
+            report = event["result"]
+            break
     if prefetch_drafts:
         urgent = set(report["urgent_message_ids"])
         prefetch([m for m in report["messages"] if m["message_id"] in urgent], settings)
@@ -195,6 +207,10 @@ def analyze_stream(
         for is_canonical, hint, received, answered in zip(
             canonical, df["severity_hint"], df["received_at"], df["answered_at"]
         )
+    ]
+    df["sla_deadline_at"] = [
+        calculate_sla_deadline(recv, settings.urgent_sla_business_hours) if is_canon else None
+        for is_canon, recv in zip(canonical, df["received_at"])
     ]
 
     report = build_report(df, include_details=include_details)

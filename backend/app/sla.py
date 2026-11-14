@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from datetime import date, datetime, time, timedelta, timezone
 
+import pandas as pd
+
 TEHRAN_TZ = timezone(timedelta(hours=3, minutes=30), name="Asia/Tehran")
 
 BUSINESS_START = time(9, 0)
@@ -121,3 +123,52 @@ def business_minutes_left(
     elapsed_hours = business_hours_between(received_at, now)
     minutes_left = (sla_hours - elapsed_hours) * 60.0
     return round(minutes_left)
+
+
+def calculate_sla_deadline(received_at: datetime, sla_hours: float = 2.0) -> datetime:
+    """Calculate the exact datetime when the business-hours SLA expires."""
+    current = to_tehran(received_at)
+    remaining_seconds = sla_hours * 3600.0
+
+    while remaining_seconds > 0:
+        d = current.date()
+        if not is_business_day(d):
+            current = datetime.combine(d + timedelta(days=1), BUSINESS_START, tzinfo=TEHRAN_TZ)
+            continue
+
+        work_open = datetime.combine(d, BUSINESS_START, tzinfo=TEHRAN_TZ)
+        work_close = datetime.combine(d, BUSINESS_END, tzinfo=TEHRAN_TZ)
+
+        if current < work_open:
+            current = work_open
+        elif current >= work_close:
+            current = datetime.combine(d + timedelta(days=1), BUSINESS_START, tzinfo=TEHRAN_TZ)
+            continue
+
+        available_seconds = (work_close - current).total_seconds()
+        if remaining_seconds <= available_seconds:
+            current = current + timedelta(seconds=remaining_seconds)
+            remaining_seconds = 0
+        else:
+            remaining_seconds -= available_seconds
+            current = datetime.combine(d + timedelta(days=1), BUSINESS_START, tzinfo=TEHRAN_TZ)
+
+    if received_at.tzinfo is not None:
+        return current.astimezone(received_at.tzinfo)
+    return current
+
+
+def is_urgent(
+    severity_hint: str,
+    received_at: datetime,
+    answered_at: datetime | None,
+    now: datetime,
+    sla_hours: float,
+) -> bool:
+    """Check whether high-severity message is unanswered and exceeded SLA hours."""
+    if (severity_hint or "").lower() != "high":
+        return False
+    if answered_at is not None and not pd.isna(answered_at) and answered_at <= now:
+        return False
+    return business_hours_between(received_at, now) >= sla_hours
+

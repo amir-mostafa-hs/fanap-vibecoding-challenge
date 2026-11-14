@@ -2,7 +2,13 @@ from __future__ import annotations
 
 from datetime import datetime, timezone, timedelta
 
-from app.sla import business_hours_between, business_minutes_left, TEHRAN_TZ
+from app.sla import (
+    business_hours_between,
+    business_minutes_left,
+    calculate_sla_deadline,
+    is_urgent,
+    TEHRAN_TZ,
+)
 
 
 def _utc(*args: int) -> datetime:
@@ -80,3 +86,37 @@ def test_business_minutes_left() -> None:
     # 2.5 hours -> overdue by 30 mins (-30)
     now_overdue = _tehran(2026, 10, 24, 12, 30)
     assert business_minutes_left(received, now_overdue, sla_hours=2.0) == -30
+
+
+def test_calculate_sla_deadline_same_day() -> None:
+    # Received at 10:00 Saturday, 2 hours SLA -> deadline at 12:00 Saturday
+    received = _tehran(2026, 10, 24, 10, 0)
+    deadline = calculate_sla_deadline(received, sla_hours=2.0)
+    assert deadline == _tehran(2026, 10, 24, 12, 0)
+    assert business_hours_between(received, deadline) == 2.0
+
+
+def test_calculate_sla_deadline_across_weekend() -> None:
+    # Received Wednesday 16:00 (1h before 17:00 close), 2h SLA -> deadline Saturday 10:00
+    received = _tehran(2026, 10, 21, 16, 0)
+    deadline = calculate_sla_deadline(received, sla_hours=2.0)
+    assert deadline == _tehran(2026, 10, 24, 10, 0)
+    assert business_hours_between(received, deadline) == 2.0
+
+
+def test_is_urgent() -> None:
+    received = _tehran(2026, 10, 24, 10, 0)
+    now_before = _tehran(2026, 10, 24, 11, 30)
+    now_urgent = _tehran(2026, 10, 24, 12, 30)
+
+    # Low severity is never urgent
+    assert not is_urgent("low", received, None, now_urgent, 2.0)
+
+    # High severity unanswered past SLA is urgent
+    assert is_urgent("high", received, None, now_urgent, 2.0)
+    assert not is_urgent("high", received, None, now_before, 2.0)
+
+    # Already answered is not urgent
+    answered = _tehran(2026, 10, 24, 11, 0)
+    assert not is_urgent("high", received, answered, now_urgent, 2.0)
+
