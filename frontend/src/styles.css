@@ -35,3 +35,60 @@ th, td { text-align: right; padding: 8px 10px; border-bottom: 1px solid #eceef2;
 .draft-text { width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-family: inherit; font-size: 14px; resize: vertical; }
 .draft-approve { align-self: flex-start; background: #16a34a; }
 .draft-warning { padding: 8px 12px; background: #fff1f2; border: 1px solid #fecdd3; color: #be123c; border-radius: 6px; font-size: 13px; }
+
+/* New Summary & Attention List Enhancements */
+.summary-section { margin: 16px 0; }
+.tile-sub { font-size: 11px; color: #9ca3af; margin-top: 4px; }
+.tile.approaching .tile-value { color: #d97706; }
+.tile.attention-total .tile-value { color: #4338ca; }
+.tiles-context-note {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  margin-top: 10px;
+  line-height: 1.5;
+}
+.attention-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.attention-card-header h2 { margin: 0; }
+.attention-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+.tab-btn {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.tab-btn:hover { background: #e2e8f0; }
+.tab-btn.active {
+  background: #2457d6;
+  color: #fff;
+  border-color: #2457d6;
+  font-weight: 500;
+}
+.tab-btn.urgent-tab.active { background: #dc2626; border-color: #dc2626; color: #fff; }
+.tab-btn.approaching-tab.active { background: #d97706; border-color: #d97706; color: #fff; }
+.badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+}
+.badge-urgent { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
+.badge-approaching { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+.row-urgent { border-right: 4px solid #ef4444; padding-right: 12px !important; }
+.row-approaching { border-right: 4px solid #f59e0b; padding-right: 12px !important; }

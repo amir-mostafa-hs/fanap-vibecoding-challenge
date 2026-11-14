@@ -9,9 +9,11 @@ import type { Message } from './types';
 
 describe('SummaryTiles', () => {
   it('shows totals and contains urgent-count testid', () => {
-    render(<SummaryTiles total={1200} urgent={7} />);
+    render(<SummaryTiles total={1200} urgent={7} approaching={13} attentionTotal={20} />);
     expect(screen.getByTestId('urgent')).toHaveTextContent('7');
     expect(screen.getByTestId('urgent-count')).toHaveTextContent('7');
+    expect(screen.getByTestId('approaching')).toHaveTextContent('13');
+    expect(screen.getByTestId('attention-total')).toHaveTextContent('20');
   });
 });
 
@@ -88,6 +90,38 @@ describe('AttentionList & Draft reply workflow', () => {
 
     expect(rows[1]).toHaveAttribute('data-message-id', 'M102');
     expect(rows[1]).toHaveAttribute('data-business-minutes-left', '75');
+  });
+
+  it('filters attention rows using interactive tabs', () => {
+    render(
+      <AttentionList
+        ids={['M101', 'M102']}
+        messages={[sampleMessage1, sampleMessage2]}
+        now={new Date('2026-10-24T12:30:00+03:30')}
+      />
+    );
+
+    // Initial state: "all" selected -> 2 rows
+    expect(screen.getAllByTestId('attention-row')).toHaveLength(2);
+
+    // Click Urgent tab -> only M101 shown
+    const urgentTab = screen.getByRole('tab', { name: /فوری و معوق/i });
+    fireEvent.click(urgentTab);
+    const urgentRows = screen.getAllByTestId('attention-row');
+    expect(urgentRows).toHaveLength(1);
+    expect(urgentRows[0]).toHaveAttribute('data-message-id', 'M101');
+
+    // Click Approaching tab -> only M102 shown
+    const approachingTab = screen.getByRole('tab', { name: /در مهلت تعهد/i });
+    fireEvent.click(approachingTab);
+    const approachingRows = screen.getAllByTestId('attention-row');
+    expect(approachingRows).toHaveLength(1);
+    expect(approachingRows[0]).toHaveAttribute('data-message-id', 'M102');
+
+    // Click All tab -> both shown again
+    const allTab = screen.getByRole('tab', { name: /همه/i });
+    fireEvent.click(allTab);
+    expect(screen.getAllByTestId('attention-row')).toHaveLength(2);
   });
 
   it('handles successful draft reply with textarea and approve button', async () => {

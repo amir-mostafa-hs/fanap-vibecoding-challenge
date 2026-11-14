@@ -89,7 +89,12 @@ export default function App() {
       {error && <p className="error">{error}</p>}
       {result && (
         <>
-          <SummaryTiles total={result.total_unique_messages} urgent={urgentCount} />
+          <SummaryTiles
+            total={result.total_unique_messages}
+            urgent={urgentCount}
+            approaching={attentionMessages.length - urgentCount}
+            attentionTotal={attentionMessages.length}
+          />
           <CategoryBreakdown counts={result.category_counts} total={result.total_unique_messages} />
           <AttentionList ids={attentionIds} messages={attentionMessages} now={currentTime} />
           <MessagesTable messages={result.messages} />
